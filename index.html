@@ -155,29 +155,28 @@
 </head>
 <body class="flex items-center justify-center min-h-screen p-4" dir="ltr">
 
-    <!-- WELCOME SCREEN -->
-    <div id="screen-welcome" class="screen active welcome-screen items-center justify-center">
-        <div class="bg-gray-900 w-full max-w-md mx-auto rounded-2xl shadow-2xl border-4 border-gray-700 p-8 text-center">
-            <h1 class="logo text-3xl mb-4">ParkPulse</h1>
-            <p class="text-gray-200 text-lg mb-6">
-                Smart parking, less stress. See real-time free spots, switch between levels, and support Arabic & English.
-            </p>
-            <button
-                class="bg-emerald-400 hover:bg-emerald-300 text-gray-900 font-bold py-2 px-6 rounded-full text-lg"
-                onclick="showMainApp()"
-            >
-                Start demo
-            </button>
-            <p class="text-gray-400 text-xs mt-4">
-                MVP Prototype – Mall Parking (P1–P3)
-            </p>
-            <!-- Link to operator dashboard -->
-            <a href="dashboard.html"
-               style="display:block; margin-top:10px; font-size:0.85rem; color:#60A5FA; text-decoration:underline;">
-               Operator dashboard demo
-            </a>
-        </div>
+   <!-- WELCOME SCREEN -->
+<div id="screen-welcome" class="screen active welcome-screen items-center justify-center">
+    <div class="bg-gray-900 w-full max-w-md mx-auto rounded-2xl shadow-2xl border-4 border-gray-700 p-8 text-center">
+        <h1 class="logo text-3xl mb-4">ParkPulse</h1>
+        <p class="text-gray-200 text-lg mb-6">
+            Smart parking, less stress. See real-time free spots, switch between levels, and support Arabic & English.
+        </p>
+        <button
+            class="bg-emerald-400 hover:bg-emerald-300 text-gray-900 font-bold py-2 px-6 rounded-full text-lg"
+            onclick="showMainApp()"
+        >
+            Start demo
+        </button>
+        <p class="text-gray-400 text-xs mt-4">
+            MVP Prototype – Mall Parking (P1–P3)
+        </p>
+        <a href="dashboard.html"
+           style="display:block; margin-top:10px; font-size:0.85rem; color:#60A5FA; text-decoration:underline;">
+           Operator dashboard demo
+        </a>
     </div>
+</div>
 
     <!-- MAIN APP SCREEN -->
     <div id="screen-app" class="screen items-center justify-center">
@@ -351,4 +350,227 @@
                     if (T[key]) el.textContent = T[key];
                 });
 
-               
+                updateCounter();
+                updateTabLabels();
+
+                const legendCol1 = document.getElementById('legend-col-1');
+                const legendCol2 = document.getElementById('legend-col-2');
+                legendCol1.classList.remove('text-left', 'text-right');
+                legendCol2.classList.remove('text-left', 'text-right');
+
+                if (T.dir === 'rtl') {
+                    legendCol1.classList.add('text-right');
+                    legendCol2.classList.add('text-right');
+                    legendCol1.parentNode.insertBefore(legendCol2, legendCol1);
+                } else {
+                    legendCol1.classList.add('text-left');
+                    legendCol2.classList.add('text-left');
+                    legendCol1.parentNode.insertBefore(legendCol1, legendCol2);
+                }
+
+                if (modalOverlay.style.display === 'flex') {
+                    const spotData = parkingData[currentLevel].find(s => s.id === modalSpotId.textContent);
+                    if (spotData) showSpotModal(spotData);
+                }
+            }
+
+            function updateTabLabels() {
+                tabs.forEach(tab => {
+                    const level = tab.dataset.level;
+                    tab.textContent = T[`level${level}`];
+                });
+            }
+
+            function initializeGrid(levelPrefix) {
+                grid.innerHTML = '';
+                grid.style.display = 'grid';
+                loading.style.display = 'none';
+                availableSpots = 0;
+                currentLevel = levelPrefix;
+
+                if (!parkingData[levelPrefix]) {
+                    parkingData[levelPrefix] = [];
+                    for (let i = 1; i <= totalSpots; i++) {
+                        parkingData[levelPrefix].push(generateSpotData(levelPrefix, i));
+                    }
+                }
+
+                parkingData[levelPrefix].forEach(spotData => {
+                    if (!spotData.isOccupied) availableSpots++;
+                    grid.appendChild(createSpotElement(spotData));
+                });
+
+                updateCounter();
+                clearHighlights();
+
+                if (savedSpot.level === currentLevel) {
+                    highlightSavedSpot();
+                }
+            }
+
+            function generateSpotData(levelPrefix, i) {
+                const spotId = `${levelPrefix}-${i.toString().padStart(2, '0')}`;
+                let spotType = 'regular';
+                let isOccupied = Math.random() > 0.6;
+
+                if (i <= 2) {
+                    spotType = 'handicap';
+                } else if (i >= 26) {
+                    spotType = 'ev';
+                }
+                return { id: spotId, level: levelPrefix, type: spotType, isOccupied: isOccupied };
+            }
+
+            function createSpotElement(spotData) {
+                const spot = document.createElement('div');
+                spot.id = spotData.id;
+                spot.classList.add('parking-spot', spotData.type);
+
+                let iconHtml = '';
+                if (spotData.type === 'handicap') iconHtml = '<i class="fa-solid fa-wheelchair spot-icon"></i>';
+                if (spotData.type === 'ev') iconHtml = '<i class="fa-solid fa-charging-station spot-icon"></i>';
+
+                if (spotData.isOccupied) {
+                    spot.classList.add('occupied');
+                    if (spotData.type === 'regular') iconHtml = '<i class="fa-solid fa-car spot-icon"></i>';
+                } else {
+                    spot.classList.add('available');
+                }
+
+                spot.innerHTML = `<span class="spot-label">${spotData.id}</span>${iconHtml}`;
+                spot.addEventListener('click', () => showSpotModal(spotData));
+                return spot;
+            }
+
+            function showSpotModal(spotData) {
+                modalSpotId.textContent = spotData.id;
+                modalActions.innerHTML = '';
+
+                let typeKey = 'regularSpot';
+                if (spotData.type === 'handicap') typeKey = 'handicap';
+                if (spotData.type === 'ev') typeKey = 'evCharging';
+                modalSpotType.textContent = T[typeKey];
+
+                if (spotData.isOccupied) {
+                    modalSpotType.textContent += T.occupiedStatus;
+                    const saveBtn = document.createElement('button');
+                    saveBtn.textContent = T.saveLocation;
+                    saveBtn.className = 'bg-yellow-500 text-white w-full py-2 rounded-lg font-semibold hover:bg-yellow-400';
+                    saveBtn.onclick = () => saveSpot(spotData);
+                    modalActions.appendChild(saveBtn);
+                } else {
+                    modalSpotType.textContent += T.availableStatus;
+                    const parkBtn = document.createElement('button');
+                    parkBtn.textContent = T.parkHere;
+                    parkBtn.className = 'bg-green-600 text-white w-full py-2 rounded-lg font-semibold hover:bg-green-500';
+                    parkBtn.onclick = () => parkCar(spotData);
+                    modalActions.appendChild(parkBtn);
+                }
+                modalOverlay.style.display = 'flex';
+            }
+
+            function parkCar(spotData) {
+                const dataIndex = parkingData[spotData.level].findIndex(s => s.id === spotData.id);
+                if (dataIndex !== -1) {
+                    parkingData[spotData.level][dataIndex].isOccupied = true;
+                }
+                availableSpots--;
+                updateSpotElement(spotData.id, true, spotData.type);
+                updateCounter();
+
+                // Show time-saved message
+                timeSavedBanner.style.display = 'block';
+
+                modalOverlay.style.display = 'none';
+            }
+
+            function saveSpot(spotData) {
+                clearHighlights();
+                savedSpot.id = spotData.id;
+                savedSpot.level = spotData.level;
+                findMyCarBtn.style.display = 'block';
+                highlightSavedSpot();
+                modalOverlay.style.display = 'none';
+            }
+
+            findMyCarBtn.addEventListener('click', () => {
+                if (!savedSpot.id) return;
+                if (savedSpot.level !== currentLevel) {
+                    const targetTab = document.querySelector(`[data-level="${savedSpot.level}"]`);
+                    if (targetTab) targetTab.click();
+                } else {
+                    highlightSavedSpot();
+                }
+            });
+
+            function highlightSavedSpot() {
+                clearHighlights();
+                const spotEl = document.getElementById(savedSpot.id);
+                if (spotEl) {
+                    spotEl.classList.add('saved-spot');
+                    spotEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            function clearHighlights() {
+                document.querySelectorAll('.saved-spot').forEach(el => el.classList.remove('saved-spot'));
+            }
+
+            function updateSpotElement(spotId, isOccupied, spotType) {
+                const spotEl = document.getElementById(spotId);
+                if (!spotEl) return;
+
+                spotEl.classList.remove('available', 'occupied');
+                let iconHtml = '';
+                if (spotType === 'handicap') iconHtml = '<i class="fa-solid fa-wheelchair spot-icon"></i>';
+                if (spotType === 'ev') iconHtml = '<i class="fa-solid fa-charging-station spot-icon"></i>';
+
+                if (isOccupied) {
+                    spotEl.classList.add('occupied');
+                    if (spotType === 'regular') iconHtml = '<i class="fa-solid fa-car spot-icon"></i>';
+                } else {
+                    spotEl.classList.add('available');
+                }
+                spotEl.innerHTML = `<span class="spot-label">${spotId}</span>${iconHtml}`;
+            }
+
+            function updateCounter() {
+                levelLabel.textContent = `${T.status} (${T[`level${currentLevel}`]}):`;
+                counter.textContent = `${availableSpots} / ${totalSpots}`;
+            }
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const level = tab.dataset.level;
+                    if (level === currentLevel) return;
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    grid.style.display = 'none';
+                    loading.style.display = 'block';
+                    setTimeout(() => {
+                        initializeGrid(level);
+                    }, 500);
+                });
+            });
+
+            langToggleBtn.addEventListener('click', () => {
+                const newLang = currentLang === 'en' ? 'ar' : 'en';
+                updateUIforLanguage(newLang);
+                initializeGrid(currentLevel);
+            });
+
+            modalCloseBtn.addEventListener('click', () => {
+                modalOverlay.style.display = 'none';
+            });
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    modalOverlay.style.display = 'none';
+                }
+            });
+
+            updateUIforLanguage('en');
+            initializeGrid('P1');
+        });
+    </script>
+</body>
+</html>
