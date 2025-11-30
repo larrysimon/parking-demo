@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate-key="pageTitle">Smart Parking Dashboard (Demo)</title>
+    <style>
+        /* Basic Layout */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            display: grid;
+            grid-template-areas:
+                "header"
+                "main-content";
+            grid-gap: 20px;
+            padding: 20px;
+            max-width: 1200px;
+            margin: auto;
+            direction: ltr;
+            text-align: left;
+        }
+
+        h1, h2 {
+            margin: 0;
+            color: #1a3b5d;
+        }
+
+        .header { grid-area: header; text-align: center; position: relative; }
+        .main-content { grid-area: main-content; display: grid; grid-gap: 20px; }
+        .garage-container { display: block; }
+
+        /* Hamburger Menu */
+        .hamburger-menu {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            cursor: pointer;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .hamburger-menu span {
+            display: block;
+            width: 25px;
+            height: 3px;
+            background-color: #333;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        /* Side Menu */
+        #side-menu {
+            position: fixed;
+            top: 0;
+            left: -250px;
+            width: 250px;
+            height: 100%;
+            background-color: #f8f9fa;
+            padding-top: 60px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.2);
+            transition: left 0.3s ease-in-out;
+            z-index: 999;
+            text-align: left;
+        }
+        #side-menu.open { left: 0; }
+        #side-menu ul { list-style: none; padding: 0; margin: 0; }
+        #side-menu li a {
+            padding: 15px 20px;
+            display: block;
+            color: #333;
+            text-decoration: none;
+            font-size: 1.1rem;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s ease;
+        }
+        #side-menu li a:hover { background-color: #e9ecef; }
+
+        /* Stats Bar */
+        .stats-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            gap: 16px;
+        }
+        .stat-item {
+            text-align: center;
+            min-width: 120px;
+        }
+        .stat-item h2 {
+            font-size: 1.0rem;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-item p {
+            font-size: 2.0rem;
+            font-weight: 600;
+            margin: 5px 0 0 0;
+        }
+        #stats-open { color: #00b16a; }
+        #stats-occupied { color: #d9534f; }
+        #stats-occupancy { color: #f0ad4e; }
+        #traffic-display {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #007bff;
+            text-align: center;
+            padding: 10px 0;
+            width: 100%;
+        }
+
+        /* Controls */
+        .controls-container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .controls-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #fcfcfc;
+        }
+        .controls-group label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .controls-container button {
+            font-size: 1.1rem;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-weight: 500;
+        }
+        .controls-container input[type="number"],
+        .controls-container input[type="text"] {
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            width: 150px;
+            text-align: center;
+        }
+        #btn-enter { background-color: #00b16a; color: white; }
+        #btn-enter:hover { background-color: #008a54; }
+        #btn-leave { background-color: #d9534f; color: white; }
+        #btn-leave:hover { background-color: #b0433f; }
+        #btn-enter-specific { background-color: #007bff; color: white; }
+        #btn-enter-specific:hover { background-color: #0056b3; }
+        #btn-leave-specific { background-color: #6c757d; color: white; }
+        #btn-leave-specific:hover { background-color: #5a6268; }
+        #btn-find-car { background-color: #28a745; color: white; }
+        #btn-find-car:hover { background-color: #218838; }
+        #btn-switch-english {
+            background-color: #20c997;
+            color: white;
+            padding: 10px 20px;
+            font-size: 1rem;
+            margin: 0 5px;
+        }
+        #btn-switch-english:hover { background-color: #17a2b8; }
+        #btn-switch-arabic {
+            background-color: #dc3545;
+            color: white;
+            padding: 10px 20px;
+            font-size: 1rem;
+            margin: 0 5px;
+        }
+        #btn-switch-arabic:hover { background-color: #c82333; }
+
+        /* Garage Map */
+        .garage-map {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .garage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 10px;
+        }
+        .spot {
+            height: 40px;
+            border-radius: 6px;
+            border: 2px solid #ddd;
+            transition: all 0.3s ease;
+            font-size: 0.8rem;
+            font-weight: 500;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0,0,0,0.4);
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: normal;
+            padding: 5px;
+        }
+        .spot.free {
+            background-color: #e6f7f0;
+            border-color: #00b16a;
+            color: #008a54;
+        }
+        .spot.occupied {
+            background-color: #fdeded;
+            border-color: #d9534f;
+            color: #b0433f;
+        }
+        .spot.reserved {
+            background-color: #e0f2f7;
+            border-color: #007bff;
+            color: #0056b3;
+        }
+        .spot.highlight {
+            box-shadow: 0 0 15px 5px rgba(255, 255, 0, 0.7);
+            animation: pulse-highlight 1.5s infinite alternate;
+        }
+        @keyframes pulse-highlight {
+            0% { box-shadow: 0 0 15px 5px rgba(255, 255, 0, 0.7); }
+            100% { box-shadow: 0 0 25px 8px rgba(255, 255, 0, 1); }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="hamburger-menu" id="hamburger-icon">
+            <span></span><span></span><span></span>
+        </div>
+        <nav id="side-menu">
+            <ul>
+                <li><a href="#" data-garage-id="garage-1">Garage 1</a></li>
+            </ul>
+        </nav>
+        <h1 data-translate-key="dashboardTitle">Smart Parking Dashboard</h1>
+        <p data-translate-key="dashboardSubtitle">Live "God View" Simulation</p>
+    </header>
+
+    <div class="main-content">
+        <div id="garage-1" class="garage-container">
+            <section class="stats">
+                <div class="stats-container">
+                    <div class="stat-item">
+                        <h2 data-translate-key="statsOpenLabel">Open Spots</h2>
+                        <p id="stats-open">0</p>
+                    </div>
+                    <div class="stat-item">
+                        <h2 data-translate-key="statsOccupiedLabel">Occupied</h2>
+                        <p id="stats-occupied">0</p>
+                    </div>
+                    <div class="stat-item">
+                        <h2 data-translate-key="statsOccupancyLabel">Occupancy</h2>
+                        <p id="stats-occupancy">0%</p>
+                    </div>
+                    <div class="stat-item">
+                        <h2>Est. Hourly Revenue</h2>
+                        <p id="stats-revenue">0 AED</p>
+                    </div>
+                    <div class="stat-item">
+                        <h2>Revenue per Space</h2>
+                        <p id="stats-rps">0 AED</p>
+                    </div>
+                    <div class="stat-item">
+                        <h2>Long-Stay Risk</h2>
+                        <p id="stats-dwell">0 bays</p>
+                    </div>
+                    <div id="traffic-display" data-translate-key="trafficStatusLabel">Traffic: Low</div>
+                </div>
+                <div id="alert-bar" style="
+                    margin-top:12px;
+                    padding:10px;
+                    border-radius:8px;
+                    font-weight:600;
+                    font-size:0.95rem;
+                    text-align:center;
+                    display:none;
+                "></div>
+            </section>
+
+            <!-- AI Insights panel -->
+            <section class="ai-insights">
+                <div style="
+                    margin-top:4px;
+                    background:#111827;
+                    color:#E5E7EB;
+                    padding:14px 16px;
+                    border-radius:10px;
+                    box-shadow:0 4px 12px rgba(15,23,42,0.35);
+                ">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <h2 style="margin:0; font-size:0.95rem; letter-spacing:0.03em; text-transform:uppercase; color:#A5B4FC;">
+                            AI Insights (Beta)
+                        </h2>
+                        <span style="font-size:0.7rem; color:#9CA3AF;">Last AI update: <span id="ai-last-update">–</span></span>
+                    </div>
+                    <p id="ai-forecast" style="margin:0 0 4px 0; font-size:0.9rem;"></p>
+                    <p id="ai-pricing" style="margin:0 0 4px 0; font-size:0.9rem;"></p>
+                    <p id="ai-operations" style="margin:0; font-size:0.9rem;"></p>
+                </div>
+            </section>
+
+            <section class="controls">
+                <div class="controls-container">
+                    <div class="controls-group lang-switcher">
+                        <button id="btn-switch-english">English</button>
+                        <button id="btn-switch-arabic">العربية</button>
+                    </div>
+                    <button id="btn-setup-wizard">Setup Wizard</button>
+                    <button id="btn-enter" data-translate-key="btnEnterText">Simulate Car Enter (LPR Scan)</button>
+                    <button id="btn-leave" data-translate-key="btnLeaveText">Simulate Car Leave (LPR Scan)</button>
+                    <div class="controls-group">
+                        <label for="input-enter-spot" data-translate-key="inputEnterSpotLabel">Spot Number:</label>
+                        <input type="number" id="input-enter-spot" data-translate-placeholder="inputSpotPlaceholder" placeholder="Spot #" min="1" max="80">
+                        <label for="input-enter-lpr" data-translate-key="inputLPRLabel">License Plate:</label>
+                        <input type="text" id="input-enter-lpr" data-translate-placeholder="inputLPRPlaceholder" placeholder="ABC-123" maxlength="10">
+                        <button id="btn-enter-specific" data-translate-key="btnEnterSpecificText">Enter Specific Spot</button>
+                    </div>
+                    <div class="controls-group">
+                        <label for="input-leave-spot" data-translate-key="inputLeaveSpotLabel">Spot Number:</label>
+                        <input type="number" id="input-leave-spot" data-translate-placeholder="inputSpotPlaceholder" placeholder="Spot #" min="1" max="80">
+                        <label for="input-leave-lpr" data-translate-key="inputLeaveLPRLabel">License Plate:</label>
+                        <input type="text" id="input-leave-lpr" data-translate-placeholder="inputLPRPlaceholder" placeholder="ABC-123" maxlength="10">
+                        <button id="btn-leave-specific" data-translate-key="btnLeaveSpecificText">Leave Specific Spot</button>
+                    </div>
+                    <div class="controls-group">
+                        <label for="input-find-lpr" data-translate-key="inputFindLPRLabel">Find Car by License Plate:</label>
+                        <input type="text" id="input-find-lpr" data-translate-placeholder="inputLPRPlaceholder" placeholder="ABC-123" maxlength="10">
+                        <button id="btn-find-car" data-translate-key="btnFindCarText">Find My Car</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="garage-map">
+                <h2 data-translate-key="garageLevelTitle">P1 - Level 1</h2>
+                <div class="garage-grid" id="garage-grid"></div>
+                <div style="margin-top:16px;">
+                    <h3 style="margin:0 0 6px 0; font-size:0.95rem; color:#1a3b5d;">
+                        Recent occupancy (last 10 events)
+                    </h3>
+                    <div id="history-strip" style="display:flex; gap:4px; align-items:flex-end; height:40px;"></div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Setup Wizard Overlay -->
+    <div id="wizard-overlay" style="
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.7);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:2000;
+    ">
+      <div style="
+        background:#ffffff;
+        max-width:480px;
+        width:90%;
+        border-radius:12px;
+        padding:20px 24px 16px 24px;
+        box-shadow:0 10px 30px rgba(15,23,42,0.3);
+        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      ">
+        <h2 style="margin:0 0 8px 0; font-size:1.4rem; color:#1a3b5d;">
+          Smart Parking Setup Wizard
+        </h2>
+        <p style="margin:0 0 16px 0; font-size:0.9rem; color:#4b5563;">
+          High‑level steps to get sensors, gateway, cloud, and apps connected.
+        </p>
+
+        <div id="wizard-step-content" style="min-height:120px; font-size:0.95rem; color:#111827;">
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+          <button id="wizard-close" style="
+            padding:8px 14px;
+            border-radius:999px;
+            border:1px solid #d1d5db;
+            background:#f9fafb;
+            font-size:0.85rem;
+            cursor:pointer;
+          ">
+            Close
+          </button>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <span id="wizard-step-indicator" style="font-size:0.85rem; color:#6b7280;">Step 1 of 4</span>
+            <button id="wizard-prev" style="
+              padding:8px 14px;
+              border-radius:999px;
+              border:1px solid #d1d5db;
+              background:#f9fafb;
+              font-size:0.85rem;
+              cursor:pointer;
+            ">
+              Back
+            </button>
+            <button id="wizard-next" style="
+              padding:8px 18px;
+              border-radius:999px;
+              border:none;
+              background:#2563eb;
+              color:white;
+              font-size:0.9rem;
+              font-weight:600;
+              cursor:pointer;
+            ">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+        const TOTAL_SPOTS = 80;
+        const RESERVED_SPOTS_IDS = [5, 10, 15, 20];
+
+        let currentTrafficState = 'Low';
+        const TRAFFIC_STATES = ['Low', 'Medium', 'High'];
+
+        const translations = {
+            en: {
+                pageTitle: 'Smart Parking Dashboard (Demo)',
+                dashboardTitle: 'Smart Parking Dashboard',
+                dashboardSubtitle: 'Live "God View" Simulation',
+                statsOpenLabel: 'Open Spots',
+                statsOccupiedLabel: 'Occupied',
+                statsOccupancyLabel: 'Occupancy',
+                btnEnterText: 'Simulate Car Enter (LPR Scan)',
+                btnLeaveText: 'Simulate Car Leave (LPR Scan)',
+                inputEnterSpotLabel: 'Spot Number:',
+                inputLeaveSpotLabel: 'Spot Number:',
+                inputLPRLabel: 'License Plate:',
+                inputSpotPlaceholder: 'Spot #',
+                inputLPRPlaceholder: 'ABC-123',
+                btnEnterSpecificText: 'Enter Specific Spot',
+                btnLeaveSpecificText: 'Leave Specific Spot',
+                inputFindLPRLabel: 'Find Car by License Plate:',
+                btnFindCarText: 'Find My Car',
+                garageLevelTitle: 'P1 - Level 1',
+                alertGarageFull: 'Garage is Full!',
+                alertReservedSpot: 'Spot P-KEY is a reserved spot. Cannot park here unless specific conditions are met.',
+                alertNonReservedWarning: 'Warning: No non-reserved spots available. Parking in a reserved spot.',
+                alertGarageEmpty: 'Garage is Empty!',
+                alertInvalidSpotNumber: 'Please enter a valid spot number between 1 and TOTAL_SPOTS.',
+                alertEnterLPR: 'Please enter a license plate for the specific spot entry.',
+                alertSpotNotFound: 'Spot not found. This should not happen with proper range validation.',
+                alertSpotOccupied: 'Spot P-KEY is already occupied by LPR_KEY.',
+                alertLeaveLPR: 'Please enter the license plate of the car to leave.',
+                alertSpotFree: 'Spot P-KEY is already free.',
+                alertLPRMismatch: "License plate mismatch. Spot P-KEY is occupied by 'LPR_KEY'.",
+                alertFindLPR: 'Please enter a license plate to find.',
+                alertCarNotFound: "Car with license plate 'LPR_KEY' not found in the garage.",
+                alertUnknownVehicle: 'an unknown vehicle',
+                alertCarEnterFailed: 'Could not enter cars (Garage full or no suitable spots).',
+                alertCarLeaveFailed: 'Could not leave cars (Garage empty or no cars to leave).',
+                trafficStatusLabel: 'Traffic:'
+            },
+            ar: {
+                pageTitle: 'لوحة معلومات مواقف السيارات الذكية (تجريبي)',
+                dashboardTitle: 'لوحة معلومات مواقف السيارات الذكية',
+                dashboardSubtitle: 'محاكاة "رؤية شاملة" حية',
+                statsOpenLabel: 'مواقف متاحة',
+                statsOccupiedLabel: 'مشغول',
+                statsOccupancyLabel: 'الإشغال',
+                btnEnterText: 'محاكاة دخول السيارة (مسح لوحة الأرقام)',
+                btnLeaveText: 'محاكاة خروج السيارة (مسح لوحة الأرقام)',
+                inputEnterSpotLabel: 'رقم الموقف:',
+                inputLeaveSpotLabel: 'رقم الموقف:',
+                inputLPRLabel: 'لوحة الأرقام:',
+                inputSpotPlaceholder: 'رقم الموقف',
+                inputLPRPlaceholder: 'ABC-123',
+                btnEnterSpecificText: 'دخول موقف محدد',
+                btnLeaveSpecificText: 'مغادرة موقف محدد',
+                inputFindLPRLabel: 'البحث عن السيارة بلوحة الأرقام:',
+                btnFindCarText: 'اعثر على سيارتي',
+                garageLevelTitle: 'P1 - المستوى 1',
+                alertGarageFull: 'المرآب ممتلئ!',
+                alertReservedSpot: 'الموقف P-KEY موقف محجوز. لا يمكن الركن هنا إلا إذا تم استيفاء شروط محددة.',
+                alertNonReservedWarning: 'تحذير: لا توجد مواقف غير محجوزة متاحة. سيتم الركن في موقف محجوز.',
+                alertGarageEmpty: 'المرآب فارغ!',
+                alertInvalidSpotNumber: `الرجاء إدخال رقم موقف صالح بين 1 و ${TOTAL_SPOTS}.`,
+                alertEnterLPR: 'الرجاء إدخال لوحة أرقام لدخول الموقف المحدد.',
+                alertSpotNotFound: 'لم يتم العثور على الموقف. يجب ألا يحدث هذا مع التحقق الصحيح من النطاق.',
+                alertSpotOccupied: `الموقف P-KEY مشغول بالفعل بـ LPR_KEY.`,
+                alertLeaveLPR: 'الرجاء إدخال لوحة أرقام السيارة للمغادرة.',
+                alertSpotFree: 'الموقف P-KEY متاح بالفعل.',
+                alertLPRMismatch: "عدم تطابق لوحة الأرقام. الموقف P-KEY مشغول بـ 'LPR_KEY'.",
+                alertFindLPR: 'الرجاء إدخال لوحة أرقام للبحث.',
+                alertCarNotFound: `لم يتم العثور على السيارة بلوحة الأرقام 'LPR_KEY' في المرآب.`,
+                alertUnknownVehicle: 'سيارة غير معروفة',
+                alertCarEnterFailed: 'تعذر دخول السيارات (المرآب ممتلئ أو لا توجد أماكن مناسبة).',
+                alertCarLeaveFailed: 'تعذر مغادرة السيارات (المرآب فارغ أو لا توجد سيارات للمغادرة).',
+                trafficStatusLabel: 'حركة المرور:'
+            }
+        };
+
+        const grid = document.getElementById('garage-grid');
+        const statsOpen = document.getElementById('stats-open');
+        const statsOccupied = document.getElementById('stats-occupied');
+        const statsOccupancy = document.getElementById('stats-occupancy');
+        const statsRevenue = document.getElementById('stats-revenue');
+        const statsRps = document.getElementById('stats-rps');
+        const statsDwell = document.getElementById('stats-dwell');
+        const btnEnter = document.getElementById('btn-enter');
+        const btnLeave = document.getElementById('btn-leave');
+        const inputEnterSpot = document.getElementById('input-enter-spot');
+        const inputEnterLPR = document.getElementById('input-enter-lpr');
+        const btnEnterSpecific = document.getElementById('btn-enter-specific');
+        const inputLeaveSpot = document.getElementById('input-leave-spot');
+        const btnLeaveSpecific = document.getElementById('btn-leave-specific');
+        const inputLeaveLPR = document.getElementById('input-leave-lpr');
+        const inputFindLPR = document.getElementById('input-find-lpr');
+        const btnFindCar = document.getElementById('btn-find-car');
+        const btnSwitchEnglish = document.getElementById('btn-switch-english');
+        const btnSwitchArabic = document.getElementById('btn-switch-arabic');
+        const btnSetupWizard = document.getElementById('btn-setup-wizard');
+        const trafficDisplay = document.getElementById('traffic-display');
+        const hamburgerIcon = document.getElementById('hamburger-icon');
+        const sideMenu = document.getElementById('side-menu');
+        const alertBar = document.getElementById('alert-bar');
+        const historyStrip = document.getElementById('history-strip');
+
+        // AI Insights
+        const aiForecast = document.getElementById('ai-forecast');
+        const aiPricing = document.getElementById('ai-pricing');
+        const aiOperations = document.getElementById('ai-operations');
+        const aiLastUpdate = document.getElementById('ai-last-update');
+
+        // Setup Wizard elements
+        const wizardOverlay = document.getElementById('wizard-overlay');
+        const wizardStepContent = document.getElementById('wizard-step-content');
+        const wizardStepIndicator = document.getElementById('wizard-step-indicator');
+        const wizardPrev = document.getElementById('wizard-prev');
+        const wizardNext = document.getElementById('wizard-next');
+        const wizardClose = document.getElementById('wizard-close');
+
+        let spots = [];
+        let highlightedSpot = null;
+        let currentLanguage = 'en';
+        let occupancyHistory = [];
+
+        let wizardStep = 0;
+        const wizardSteps = [
+          {
+            title: 'Step 1 – Install bay sensors',
+            body: `
+              • Mount a low‑power smart sensor in each parking bay (overhead camera or ground sensor).<br>
+              • Each sensor detects FREE / OCCUPIED in real time and sends a simple message like “P‑12 = OCCUPIED”.<br>
+              • Power can be wired or battery with multi‑year life.
+            `
+          },
+          {
+            title: 'Step 2 – Connect the gateway / network',
+            body: `
+              • Connect an IoT gateway to power and the internet via LoRaWAN, LTE, or Wi‑Fi.<br>
+              • The gateway securely forwards sensor messages to the cloud (MQTT / HTTPS).<br>
+              • Basic health checks ensure sensors are online and reporting frequently.
+            `
+          },
+          {
+            title: 'Step 3 – Register the garage in the cloud',
+            body: `
+              • In the operator dashboard, create a new garage (P1, P2, etc.) and total number of bays.<br>
+              • Link sensor IDs to bay IDs (for example: sensor “S‑A17” → bay “P‑17”).<br>
+              • Generate an API key so the mobile app and dashboard can pull real‑time availability.
+            `
+          },
+          {
+            title: 'Step 4 – Connect mobile app & dashboard',
+            body: `
+              • The driver app calls the cloud API to show live FREE / OCCUPIED spots and pricing.<br>
+              • This dashboard subscribes to the same data to compute occupancy, revenue, and dwell‑time alerts.<br>
+              • Operators can monitor performance and adjust rules (pricing, time limits, reserved bays).
+            `
+          }
+        ];
+
+        function renderWizardStep() {
+          const step = wizardSteps[wizardStep];
+          wizardStepContent.innerHTML = `
+            <h3 style="margin:0 0 8px 0; font-size:1.1rem; color:#111827;">${step.title}</h3>
+            <p style="margin:0; font-size:0.9rem; color:#374151; line-height:1.4;">${step.body}</p>
+          `;
+          wizardStepIndicator.textContent = `Step ${wizardStep + 1} of ${wizardSteps.length}`;
+          wizardPrev.disabled = wizardStep === 0;
+          wizardNext.textContent = (wizardStep === wizardSteps.length - 1) ? 'Done' : 'Next';
+        }
+
+        function updateLanguage(lang) {
+            currentLanguage = lang;
+            const t = translations[lang];
+
+            document.documentElement.lang = lang;
+            document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';
+            document.body.style.textAlign = (lang === 'ar') ? 'right' : 'left';
+            document.title = t.pageTitle;
+
+            document.querySelectorAll('[data-translate-key]').forEach(el => {
+                const key = el.getAttribute('data-translate-key');
+                if (t[key]) el.textContent = t[key];
+            });
+
+            document.querySelectorAll('[data-translate-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-translate-placeholder');
+                if (t[key]) el.placeholder = t[key];
+            });
+
+            spots.forEach(spot => {
+                spot.element.textContent = `P-${spot.id}`;
+                if (spot.occupied) {
+                    spot.element.textContent += `\n${spot.licensePlate}`;
+                }
+            });
+
+            trafficDisplay.textContent = `${t.trafficStatusLabel} ${currentTrafficState}`;
+        }
+
+        function initializeGarage() {
+            grid.innerHTML = '';
+            spots = [];
+
+            for (let i = 0; i < TOTAL_SPOTS; i++) {
+                const isReserved = RESERVED_SPOTS_IDS.includes(i + 1);
+                const spot = {
+                    id: i + 1,
+                    occupied: false,
+                    licensePlate: null,
+                    isReserved: isReserved,
+                    minutesParked: 0,
+                    element: document.createElement('div')
+                };
+                spot.element.classList.add('spot');
+                if (spot.isReserved) {
+                    spot.element.classList.add('reserved');
+                } else {
+                    spot.element.classList.add('free');
+                }
+                spot.element.textContent = `P-${spot.id}`;
+
+                spots.push(spot);
+                grid.appendChild(spot.element);
+            }
+            updateStats();
+            updateLanguage(currentLanguage);
+        }
+
+        function renderHistoryStrip() {
+            historyStrip.innerHTML = '';
+            occupancyHistory.forEach(value => {
+                const bar = document.createElement('div');
+                const h = Math.max(4, (value / 100) * 40);
+                bar.style.width = '10px';
+                bar.style.height = `${h}px`;
+                bar.style.borderRadius = '4px';
+                bar.title = `${value}%`;
+                if (value >= 80) {
+                    bar.style.backgroundColor = '#DC2626';
+                } else if (value >= 50) {
+                    bar.style.backgroundColor = '#F59E0B';
+                } else {
+                    bar.style.backgroundColor = '#10B981';
+                }
+                historyStrip.appendChild(bar);
+            });
+        }
+
+        function updateAIInsights(occupancyPercent, occupiedCount) {
+            if (!aiForecast || !aiPricing || !aiOperations || !aiLastUpdate) return;
+
+            let demandLabel;
+            if (occupancyPercent >= 80) demandLabel = 'very high';
+            else if (occupancyPercent >= 60) demandLabel = 'high';
+            else if (occupancyPercent >= 40) demandLabel = 'moderate';
+            else demandLabel = 'soft';
+
+            aiForecast.textContent =
+                `Forecast: Demand for the next hour is likely ${demandLabel} based on current occupancy and recent trend.`;
+
+            const baseRate = 5;
+            let suggestedRate = baseRate;
+            if (occupancyPercent >= 85) suggestedRate = baseRate * 1.4;
+            else if (occupancyPercent >= 70) suggestedRate = baseRate * 1.2;
+            else if (occupancyPercent <= 30) suggestedRate = baseRate * 0.8;
+
+            aiPricing.textContent =
+                `Pricing: Suggested rate ${suggestedRate.toFixed(1)} AED/hour (baseline ${baseRate.toFixed(1)}). `
+                + (suggestedRate > baseRate
+                   ? 'AI recommends a surcharge to manage peak demand.'
+                   : suggestedRate < baseRate
+                     ? 'AI recommends a discount to attract more parkers.'
+                     : 'AI recommends keeping the current base rate.');
+
+            const dwellThreshold = 180;
+            const longStayCount = spots.filter(s => s.occupied && s.minutesParked >= dwellThreshold).length;
+
+            if (longStayCount >= 5) {
+                aiOperations.textContent =
+                    `Operations: Prioritize enforcement on the ${longStayCount} long-stay bays and consider tightening time limits on this level.`;
+            } else if (occupiedCount === 0) {
+                aiOperations.textContent =
+                    'Operations: Garage is empty. Use this window for maintenance or cleaning.';
+            } else {
+                aiOperations.textContent =
+                    'Operations: Conditions are stable. Focus on monitoring sensor health and preparing for the next peak period.';
+            }
+
+            const now = new Date();
+            const hh = now.getHours().toString().padStart(2, '0');
+            const mm = now.getMinutes().toString().padStart(2, '0');
+            aiLastUpdate.textContent = `${hh}:${mm}`;
+        }
+
+        function updateStats() {
+            const occupiedCount = spots.filter(s => s.occupied).length;
+            const openCount = TOTAL_SPOTS - occupiedCount;
+            const occupancyPercent = Math.round((occupiedCount / TOTAL_SPOTS) * 100);
+
+            statsOpen.textContent = openCount;
+            statsOccupied.textContent = occupiedCount;
+            statsOccupancy.textContent = `${occupancyPercent}%`;
+
+            const avgRatePerHour = 5;
+            const estRevenue = occupiedCount * avgRatePerHour;
+            statsRevenue.textContent = `${estRevenue.toFixed(0)} AED`;
+            const rps = TOTAL_SPOTS > 0 ? estRevenue / TOTAL_SPOTS : 0;
+            statsRps.textContent = `${rps.toFixed(1)} AED`;
+
+            const dwellThreshold = 180;
+            const longStayCount = spots.filter(s => s.occupied && s.minutesParked >= dwellThreshold).length;
+            statsDwell.textContent = `${longStayCount} bays`;
+
+            if (longStayCount >= 5) {
+                alertBar.style.display = 'block';
+                alertBar.style.backgroundColor = '#FEE2E2';
+                alertBar.style.color = '#B91C1C';
+                alertBar.textContent = `Alert: ${longStayCount} bays over 3 hours – enforce dwell-time or adjust pricing.`;
+            } else if (occupancyPercent >= 90) {
+                alertBar.style.display = 'block';
+                alertBar.style.backgroundColor = '#FEE2E2';
+                alertBar.style.color = '#B91C1C';
+                alertBar.textContent = 'Alert: Garage near full capacity – consider higher pricing or redirecting cars.';
+            } else if (occupancyPercent >= 70) {
+                alertBar.style.display = 'block';
+                alertBar.style.backgroundColor = '#FEF3C7';
+                alertBar.style.color = '#92400E';
+                alertBar.textContent = 'Notice: High utilization – good revenue, monitor congestion.';
+            } else if (occupancyPercent <= 30) {
+                alertBar.style.display = 'block';
+                alertBar.style.backgroundColor = '#DBEAFE';
+                alertBar.style.color = '#1D4ED8';
+                alertBar.textContent = 'Low occupancy – potential to run promotions or lower rates.';
+            } else {
+                alertBar.style.display = 'none';
+            }
+
+            occupancyHistory.push(occupancyPercent);
+            if (occupancyHistory.length > 10) occupancyHistory.shift();
+            renderHistoryStrip();
+
+            updateAIInsights(occupancyPercent, occupiedCount);
+        }
+
+        function getNumberOfOperationsForTraffic() {
+            switch (currentTrafficState) {
+                case 'Low': return 1;
+                case 'Medium': return Math.floor(Math.random() * 2) + 1;
+                case 'High': return Math.floor(Math.random() * 2) + 2;
+                default: return 1;
+            }
+        }
+
+        function simulateCarEnter() {
+            const t = translations[currentLanguage];
+            const numOps = getNumberOfOperationsForTraffic();
+            let entered = 0;
+
+            for (let i = 0; i < numOps; i++) {
+                let freeSpot = spots.find(s => !s.occupied && !s.isReserved);
+                if (!freeSpot) {
+                    freeSpot = spots.find(s => !s.occupied && s.isReserved);
+                    if (!freeSpot) {
+                        if (entered === 0) alert(t.alertGarageFull);
+                        break;
+                    }
+                }
+                const randomLPR = 'RAND-' + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+                freeSpot.occupied = true;
+                freeSpot.licensePlate = randomLPR;
+                freeSpot.minutesParked = 0;
+                freeSpot.element.classList.remove('free', 'reserved');
+                freeSpot.element.classList.add('occupied');
+                freeSpot.element.textContent = `P-${freeSpot.id}\n${freeSpot.licensePlate}`;
+                entered++;
+            }
+            if (entered > 0) updateStats();
+            else if (numOps > 0) alert(t.alertCarEnterFailed);
+        }
+
+        function simulateCarEnterSpecific() {
+            const t = translations[currentLanguage];
+            const spotNumber = parseInt(inputEnterSpot.value);
+            const licensePlate = inputEnterLPR.value.trim().toUpperCase();
+
+            if (isNaN(spotNumber) || spotNumber < 1 || spotNumber > TOTAL_SPOTS) {
+                alert(t.alertInvalidSpotNumber.replace('TOTAL_SPOTS', TOTAL_SPOTS));
+                return;
+            }
+            if (!licensePlate) {
+                alert(t.alertEnterLPR);
+                return;
+            }
+
+            const spotIndex = spotNumber - 1;
+            const targetSpot = spots[spotIndex];
+            if (!targetSpot) {
+                alert(t.alertSpotNotFound);
+                return;
+            }
+            if (targetSpot.isReserved) {
+                alert(t.alertReservedSpot.replace('KEY', spotNumber));
+                return;
+            }
+            if (targetSpot.occupied) {
+                alert(t.alertSpotOccupied.replace('KEY', spotNumber).replace('LPR_KEY', targetSpot.licensePlate || t.alertUnknownVehicle));
+            } else {
+                targetSpot.occupied = true;
+                targetSpot.licensePlate = licensePlate;
+                targetSpot.minutesParked = 0;
+                targetSpot.element.classList.remove('free', 'reserved');
+                targetSpot.element.classList.add('occupied');
+                targetSpot.element.textContent = `P-${targetSpot.id}\n${targetSpot.licensePlate}`;
+                updateStats();
+                inputEnterSpot.value = '';
+                inputEnterLPR.value = '';
+            }
+        }
+
+        function simulateCarLeave() {
+            const t = translations[currentLanguage];
+            const numOps = getNumberOfOperationsForTraffic();
+            let left = 0;
+
+            for (let i = 0; i < numOps; i++) {
+                const occupiedSpots = spots.filter(s => s.occupied);
+                if (occupiedSpots.length > 0) {
+                    const randomSpot = occupiedSpots[Math.floor(Math.random() * occupiedSpots.length)];
+                    randomSpot.occupied = false;
+                    randomSpot.licensePlate = null;
+                    randomSpot.minutesParked = 0;
+                    randomSpot.element.classList.remove('occupied');
+                    if (randomSpot.isReserved) randomSpot.element.classList.add('reserved');
+                    else randomSpot.element.classList.add('free');
+                    randomSpot.element.textContent = `P-${randomSpot.id}`;
+                    left++;
+                } else {
+                    if (left === 0) alert(t.alertGarageEmpty);
+                    break;
+                }
+            }
+            if (left > 0) updateStats();
+            else if (numOps > 0) alert(t.alertCarLeaveFailed);
+        }
+
+        function simulateCarLeaveSpecific() {
+            const t = translations[currentLanguage];
+            const spotNumber = parseInt(inputLeaveSpot.value);
+            const licensePlateToLeave = inputLeaveLPR.value.trim().toUpperCase();
+
+            if (isNaN(spotNumber) || spotNumber < 1 || spotNumber > TOTAL_SPOTS) {
+                alert(t.alertInvalidSpotNumber.replace('TOTAL_SPOTS', TOTAL_SPOTS));
+                return;
+            }
+            if (!licensePlateToLeave) {
+                alert(t.alertLeaveLPR);
+                return;
+            }
+
+            const spotIndex = spotNumber - 1;
+            const targetSpot = spots[spotIndex];
+            if (!targetSpot) {
+                alert(t.alertSpotNotFound);
+                return;
+            }
+            if (!targetSpot.occupied) {
+                alert(t.alertSpotFree.replace('KEY', spotNumber));
+            } else if (targetSpot.licensePlate !== licensePlateToLeave) {
+                alert(t.alertLPRMismatch.replace('KEY', spotNumber).replace('LPR_KEY', targetSpot.licensePlate || t.alertUnknownVehicle));
+            } else {
+                targetSpot.occupied = false;
+                targetSpot.licensePlate = null;
+                targetSpot.minutesParked = 0;
+                targetSpot.element.classList.remove('occupied');
+                if (targetSpot.isReserved) targetSpot.element.classList.add('reserved');
+                else targetSpot.element.classList.add('free');
+                targetSpot.element.textContent = `P-${targetSpot.id}`;
+                updateStats();
+                inputLeaveSpot.value = '';
+                inputLeaveLPR.value = '';
+            }
+        }
+
+        function findCarByLicensePlate() {
+            const t = translations[currentLanguage];
+            if (highlightedSpot) {
+                highlightedSpot.element.classList.remove('highlight');
+                highlightedSpot = null;
+            }
+            const searchLPR = inputFindLPR.value.trim().toUpperCase();
+            if (!searchLPR) {
+                alert(t.alertFindLPR);
+                return;
+            }
+            const foundSpot = spots.find(s => s.occupied && s.licensePlate === searchLPR);
+            if (foundSpot) {
+                foundSpot.element.classList.add('highlight');
+                highlightedSpot = foundSpot;
+                foundSpot.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                alert(t.alertCarNotFound.replace('LPR_KEY', searchLPR));
+            }
+            inputFindLPR.value = '';
+        }
+
+        function updateTrafficConditions() {
+            const idx = Math.floor(Math.random() * TRAFFIC_STATES.length);
+            currentTrafficState = TRAFFIC_STATES[idx];
+
+            spots.forEach(spot => {
+                if (spot.occupied) {
+                    spot.minutesParked += 5;
+                }
+            });
+
+            const t = translations[currentLanguage];
+            trafficDisplay.textContent = `${t.trafficStatusLabel} ${currentTrafficState}`;
+            updateStats();
+        }
+
+        // Event listeners
+        btnEnter.addEventListener('click', simulateCarEnter);
+        btnLeave.addEventListener('click', simulateCarLeave);
+        btnEnterSpecific.addEventListener('click', simulateCarEnterSpecific);
+        btnLeaveSpecific.addEventListener('click', simulateCarLeaveSpecific);
+        btnFindCar.addEventListener('click', findCarByLicensePlate);
+        btnSwitchEnglish.addEventListener('click', () => updateLanguage('en'));
+        btnSwitchArabic.addEventListener('click', () => updateLanguage('ar'));
+        hamburgerIcon.addEventListener('click', () => {
+            sideMenu.classList.toggle('open');
+        });
+
+        // Setup wizard events
+        if (btnSetupWizard) {
+          btnSetupWizard.addEventListener('click', () => {
+            wizardStep = 0;
+            renderWizardStep();
+            wizardOverlay.style.display = 'flex';
+          });
+        }
+        if (wizardPrev) {
+          wizardPrev.addEventListener('click', () => {
+            if (wizardStep > 0) {
+              wizardStep--;
+              renderWizardStep();
+            }
+          });
+        }
+        if (wizardNext) {
+          wizardNext.addEventListener('click', () => {
+            if (wizardStep < wizardSteps.length - 1) {
+              wizardStep++;
+              renderWizardStep();
+            } else {
+              wizardOverlay.style.display = 'none';
+            }
+          });
+        }
+        if (wizardClose) {
+          wizardClose.addEventListener('click', () => {
+            wizardOverlay.style.display = 'none';
+          });
+        }
+        if (wizardOverlay) {
+          wizardOverlay.addEventListener('click', (e) => {
+            if (e.target === wizardOverlay) {
+              wizardOverlay.style.display = 'none';
+            }
+          });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeGarage();
+            updateLanguage('en');
+            setInterval(updateTrafficConditions, 5000);
+        });
+    </script>
+</body>
+</html>

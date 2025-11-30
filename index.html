@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking MVP + ParkPulse Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Combined font support for both Latin and Arabic -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&family=Lato:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Lato', 'Noto Naskh Arabic', sans-serif;
+            transition: all 0.3s ease;
+            background: #111827;
+        }
+        .logo {
+            font-family: 'Poppins', 'Noto Naskh Arabic', sans-serif;
+            font-weight: 700;
+            color: #00F0A0;
+        }
+
+        .welcome-screen {
+            min-height: 100vh;
+        }
+
+        .app-container {
+            background-color: #1F2937;
+        }
+
+        .parking-spot {
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: rgba(0, 0, 0, 0.4);
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 5rem;
+            border-radius: 0.5rem;
+            border-width: 4px;
+            cursor: pointer;
+        }
+        .parking-spot.available {
+            background-color: #10B981;
+            border-color: #059669;
+        }
+        .parking-spot.occupied {
+            background-color: #EF4444;
+            border-color: #DC2626;
+            color: white;
+        }
+        .parking-spot.handicap {
+            background-color: #3B82F6;
+            border-color: #2563EB;
+            color: white;
+        }
+        .parking-spot.ev {
+            background-color: #8B5CF6;
+            border-color: #7C3AED;
+            color: white;
+        }
+        .parking-spot .spot-icon {
+            font-size: 2.5rem;
+            position: absolute;
+        }
+        .parking-spot .spot-label {
+            position: absolute;
+            top: 4px;
+            left: 6px;
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 0.75rem;
+        }
+        .parking-spot.available .spot-label {
+            color: rgba(0, 0, 0, 0.3);
+        }
+
+        body[dir='rtl'] .parking-spot .spot-label {
+            left: auto;
+            right: 6px;
+        }
+
+        .saved-spot {
+            box-shadow: 0 0 20px 5px #FACC15;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 20px 5px #FACC15; }
+            50% { box-shadow: 0 0 30px 10px #FACC15; }
+            100% { box-shadow: 0 0 20px 5px #FACC15; }
+        }
+
+        .tab-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            color: #D1D5DB;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active {
+            background-color: #00F0A0;
+            color: #1F2937;
+        }
+        .tab-btn:not(.active):hover {
+            background-color: #374151;
+        }
+
+        #loading-indicator {
+            display: none;
+            color: #00F0A0;
+            text-align: center;
+            padding: 2rem;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        #modal-content {
+            background: #374151;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            color: white;
+            width: 90%;
+            max-width: 320px;
+            text-align: center;
+        }
+
+        .screen {
+            display: none;
+        }
+        .screen.active {
+            display: flex;
+        }
+
+        /* Time saved banner */
+        #time-saved-banner {
+            display: none;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4" dir="ltr">
+
+    <!-- WELCOME SCREEN -->
+    <div id="screen-welcome" class="screen active welcome-screen items-center justify-center">
+        <div class="bg-gray-900 w-full max-w-md mx-auto rounded-2xl shadow-2xl border-4 border-gray-700 p-8 text-center">
+            <h1 class="logo text-3xl mb-4">ParkPulse</h1>
+            <p class="text-gray-200 text-lg mb-6">
+                Smart parking, less stress. See real-time free spots, switch between levels, and support Arabic & English.
+            </p>
+            <button
+                class="bg-emerald-400 hover:bg-emerald-300 text-gray-900 font-bold py-2 px-6 rounded-full text-lg"
+                onclick="showMainApp()"
+            >
+                Start demo
+            </button>
+            <p class="text-gray-400 text-xs mt-4">
+                MVP Prototype – Mall Parking (P1–P3)
+            </p>
+        </div>
+    </div>
+
+    <!-- MAIN APP SCREEN -->
+    <div id="screen-app" class="screen items-center justify-center">
+        <div class="app-container bg-gray-800 w-full max-w-md mx-auto rounded-2xl shadow-2xl overflow-hidden border-4 border-gray-700">
+            
+            <!-- Header -->
+            <header class="bg-gray-700 p-4 shadow-md flex justify-between items-center">
+                <button id="lang-toggle-btn" class="text-gray-300 text-sm py-1 px-2 rounded-full border border-gray-500 hover:border-white transition-colors">
+                    عربي
+                </button>
+                <h1 class="logo text-3xl text-center flex-grow" data-key="appTitle">ParkPulse</h1>
+                <button id="find-my-car-btn" class="text-gray-300 text-2xl px-2 hidden hover:text-yellow-400" data-tooltip="Find My Car">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                </button>
+            </header>
+            <p class="text-gray-300 text-center text-lg mt-1" data-key="mallName">Dubai Mall</p>
+
+            <!-- Tabs -->
+            <nav class="bg-gray-800 p-2 flex justify-around">
+                <button id="btn-p1" class="tab-btn active" data-level="P1" data-key="levelP1">Level P1</button>
+                <button id="btn-p2" class="tab-btn" data-level="P2" data-key="levelP2">Level P2</button>
+                <button id="btn-p3" class="tab-btn" data-level="P3" data-key="levelP3">Level P3</button>
+            </nav>
+
+            <!-- Main content -->
+            <main class="p-4 min-h-[340px]">
+                <div id="loading-indicator">
+                    <i class="fa-solid fa-spinner fa-spin mr-2"></i>
+                    <span data-key="loading">Fetching real-time data...</span>
+                </div>
+                <div id="parking-grid" class="grid grid-cols-4 gap-3"></div>
+            </main>
+
+            <!-- Time saved banner -->
+            <div id="time-saved-banner" class="bg-emerald-500 text-gray-900 text-sm font-semibold text-center py-2">
+                Estimated search time saved: ~5 minutes
+            </div>
+
+            <!-- Footer -->
+            <footer class="bg-gray-700 p-4 mt-2">
+                <div class="flex justify-between items-center mb-3 text-sm">
+                    <div class="text-left" id="legend-col-1">
+                        <div class="flex items-center">
+                            <div class="w-5 h-5 rounded bg-green-500 border-2 border-green-400 mr-2"></div>
+                            <span class="text-gray-200" data-key="available">Available</span>
+                        </div>
+                        <div class="flex items-center mt-1">
+                            <div class="w-5 h-5 rounded bg-red-500 border-2 border-red-400 mr-2"></div>
+                            <span class="text-gray-200" data-key="occupied">Occupied</span>
+                        </div>
+                    </div>
+                    <div class="text-left" id="legend-col-2">
+                        <div class="flex items-center">
+                            <div class="w-5 h-5 rounded bg-blue-500 border-2 border-blue-400 mr-2"></div>
+                            <span class="text-gray-200" data-key="handicap">Handicap Accessible</span>
+                        </div>
+                        <div class="flex items-center mt-1">
+                            <div class="w-5 h-5 rounded bg-violet-500 border-2 border-violet-400 mr-2"></div>
+                            <span class="text-gray-200" data-key="evCharging">EV Charging Station</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center border-t border-gray-600 pt-3">
+                    <p id="level-label" class="text-gray-300 text-lg"></p>
+                    <h2 id="availability-counter" class="text-white font-bold text-2xl">-- / --</h2>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal-overlay">
+        <div id="modal-content">
+            <h2 id="modal-spot-id" class="text-3xl font-bold mb-2"></h2>
+            <p id="modal-spot-type" classs="text-lg mb-4"></p>
+            <div id="modal-actions" class="flex flex-col gap-3 mt-6"></div>
+            <button id="modal-close-btn" class="mt-4 bg-gray-500 text-white w-full py-2 rounded-lg font-semibold hover:bg-gray-400" data-key="close">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function showMainApp() {
+            document.getElementById('screen-welcome').classList.remove('active');
+            document.getElementById('screen-welcome').style.display = 'none';
+            document.getElementById('screen-app').classList.add('active');
+        }
+
+        const translations = {
+            en: {
+                appTitle: "ParkPulse",
+                mallName: "Dubai Mall",
+                levelP1: "Level P1",
+                levelP2: "Level P2",
+                levelP3: "Level P3",
+                status: "Status",
+                available: "Available",
+                occupied: "Occupied",
+                handicap: "Handicap Accessible",
+                evCharging: "EV Charging Station",
+                loading: "Fetching real-time data...",
+                close: "Close",
+                saveLocation: "Save My Location",
+                parkHere: "Park Here",
+                findMyCar: "Find My Car",
+                spotType: "Spot Type",
+                regularSpot: "Regular Spot",
+                occupiedStatus: " (Occupied)",
+                availableStatus: " (Available)",
+                langSwitch: "عربي",
+                dir: "ltr",
+            },
+            ar: {
+                appTitle: "بارك بولس",
+                mallName: "دبي مول",
+                levelP1: "المستوى P1",
+                levelP2: "المستوى P2",
+                levelP3: "المستوى P3",
+                status: "الحالة",
+                available: "متاح",
+                occupied: "مشغول",
+                handicap: "مخصص لذوي الهمم",
+                evCharging: "محطة شحن للسيارات الكهربائية",
+                loading: "جلب البيانات في الوقت الفعلي...",
+                close: "إغلاق",
+                saveLocation: "حفظ موقع سيارتي",
+                parkHere: "أوقف سيارتي هنا",
+                findMyCar: "أين سيارتي؟",
+                spotType: "نوع الموقف",
+                regularSpot: "موقف عادي",
+                occupiedStatus: " (مشغول)",
+                availableStatus: " (متاح)",
+                langSwitch: "EN",
+                dir: "rtl",
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const grid = document.getElementById('parking-grid');
+            const counter = document.getElementById('availability-counter');
+            const levelLabel = document.getElementById('level-label');
+            const loading = document.getElementById('loading-indicator');
+            const tabs = document.querySelectorAll('.tab-btn');
+            const findMyCarBtn = document.getElementById('find-my-car-btn');
+            const langToggleBtn = document.getElementById('lang-toggle-btn');
+            const timeSavedBanner = document.getElementById('time-saved-banner');
+
+            const modalOverlay = document.getElementById('modal-overlay');
+            const modalSpotId = document.getElementById('modal-spot-id');
+            const modalSpotType = document.getElementById('modal-spot-type');
+            const modalActions = document.getElementById('modal-actions');
+            const modalCloseBtn = document.getElementById('modal-close-btn');
+
+            const totalSpots = 28;
+            let availableSpots = 0;
+            let currentLevel = 'P1';
+            let currentLang = 'en';
+            let T = translations[currentLang];
+            let parkingData = {};
+            let savedSpot = { id: null, level: null };
+
+            function updateUIforLanguage(lang) {
+                currentLang = lang;
+                T = translations[currentLang];
+                document.body.setAttribute('dir', T.dir);
+                langToggleBtn.textContent = T.langSwitch;
+
+                document.querySelectorAll('[data-key]').forEach(el => {
+                    const key = el.getAttribute('data-key');
+                    if (T[key]) el.textContent = T[key];
+                });
+
+                updateCounter();
+                updateTabLabels();
+
+                const legendCol1 = document.getElementById('legend-col-1');
+                const legendCol2 = document.getElementById('legend-col-2');
+                legendCol1.classList.remove('text-left', 'text-right');
+                legendCol2.classList.remove('text-left', 'text-right');
+
+                if (T.dir === 'rtl') {
+                    legendCol1.classList.add('text-right');
+                    legendCol2.classList.add('text-right');
+                    legendCol1.parentNode.insertBefore(legendCol2, legendCol1);
+                } else {
+                    legendCol1.classList.add('text-left');
+                    legendCol2.classList.add('text-left');
+                    legendCol1.parentNode.insertBefore(legendCol1, legendCol2);
+                }
+
+                if (modalOverlay.style.display === 'flex') {
+                    const spotData = parkingData[currentLevel].find(s => s.id === modalSpotId.textContent);
+                    if (spotData) showSpotModal(spotData);
+                }
+            }
+
+            function updateTabLabels() {
+                tabs.forEach(tab => {
+                    const level = tab.dataset.level;
+                    tab.textContent = T[`level${level}`];
+                });
+            }
+
+            function initializeGrid(levelPrefix) {
+                grid.innerHTML = '';
+                grid.style.display = 'grid';
+                loading.style.display = 'none';
+                availableSpots = 0;
+                currentLevel = levelPrefix;
+
+                if (!parkingData[levelPrefix]) {
+                    parkingData[levelPrefix] = [];
+                    for (let i = 1; i <= totalSpots; i++) {
+                        parkingData[levelPrefix].push(generateSpotData(levelPrefix, i));
+                    }
+                }
+
+                parkingData[levelPrefix].forEach(spotData => {
+                    if (!spotData.isOccupied) availableSpots++;
+                    grid.appendChild(createSpotElement(spotData));
+                });
+
+                updateCounter();
+                clearHighlights();
+
+                if (savedSpot.level === currentLevel) {
+                    highlightSavedSpot();
+                }
+            }
+
+            function generateSpotData(levelPrefix, i) {
+                const spotId = `${levelPrefix}-${i.toString().padStart(2, '0')}`;
+                let spotType = 'regular';
+                let isOccupied = Math.random() > 0.6;
+
+                if (i <= 2) {
+                    spotType = 'handicap';
+                } else if (i >= 26) {
+                    spotType = 'ev';
+                }
+                return { id: spotId, level: levelPrefix, type: spotType, isOccupied: isOccupied };
+            }
+
+            function createSpotElement(spotData) {
+                const spot = document.createElement('div');
+                spot.id = spotData.id;
+                spot.classList.add('parking-spot', spotData.type);
+
+                let iconHtml = '';
+                if (spotData.type === 'handicap') iconHtml = '<i class="fa-solid fa-wheelchair spot-icon"></i>';
+                if (spotData.type === 'ev') iconHtml = '<i class="fa-solid fa-charging-station spot-icon"></i>';
+
+                if (spotData.isOccupied) {
+                    spot.classList.add('occupied');
+                    if (spotData.type === 'regular') iconHtml = '<i class="fa-solid fa-car spot-icon"></i>';
+                } else {
+                    spot.classList.add('available');
+                }
+
+                spot.innerHTML = `<span class="spot-label">${spotData.id}</span>${iconHtml}`;
+                spot.addEventListener('click', () => showSpotModal(spotData));
+                return spot;
+            }
+
+            function showSpotModal(spotData) {
+                modalSpotId.textContent = spotData.id;
+                modalActions.innerHTML = '';
+
+                let typeKey = 'regularSpot';
+                if (spotData.type === 'handicap') typeKey = 'handicap';
+                if (spotData.type === 'ev') typeKey = 'evCharging';
+                modalSpotType.textContent = T[typeKey];
+
+                if (spotData.isOccupied) {
+                    modalSpotType.textContent += T.occupiedStatus;
+                    const saveBtn = document.createElement('button');
+                    saveBtn.textContent = T.saveLocation;
+                    saveBtn.className = 'bg-yellow-500 text-white w-full py-2 rounded-lg font-semibold hover:bg-yellow-400';
+                    saveBtn.onclick = () => saveSpot(spotData);
+                    modalActions.appendChild(saveBtn);
+                } else {
+                    modalSpotType.textContent += T.availableStatus;
+                    const parkBtn = document.createElement('button');
+                    parkBtn.textContent = T.parkHere;
+                    parkBtn.className = 'bg-green-600 text-white w-full py-2 rounded-lg font-semibold hover:bg-green-500';
+                    parkBtn.onclick = () => parkCar(spotData);
+                    modalActions.appendChild(parkBtn);
+                }
+                modalOverlay.style.display = 'flex';
+            }
+
+            function parkCar(spotData) {
+                const dataIndex = parkingData[spotData.level].findIndex(s => s.id === spotData.id);
+                if (dataIndex !== -1) {
+                    parkingData[spotData.level][dataIndex].isOccupied = true;
+                }
+                availableSpots--;
+                updateSpotElement(spotData.id, true, spotData.type);
+                updateCounter();
+
+                // Show time-saved message
+                timeSavedBanner.style.display = 'block';
+
+                modalOverlay.style.display = 'none';
+            }
+
+            function saveSpot(spotData) {
+                clearHighlights();
+                savedSpot.id = spotData.id;
+                savedSpot.level = spotData.level;
+                findMyCarBtn.style.display = 'block';
+                highlightSavedSpot();
+                modalOverlay.style.display = 'none';
+            }
+
+            findMyCarBtn.addEventListener('click', () => {
+                if (!savedSpot.id) return;
+                if (savedSpot.level !== currentLevel) {
+                    const targetTab = document.querySelector(`[data-level="${savedSpot.level}"]`);
+                    if (targetTab) targetTab.click();
+                } else {
+                    highlightSavedSpot();
+                }
+            });
+
+            function highlightSavedSpot() {
+                clearHighlights();
+                const spotEl = document.getElementById(savedSpot.id);
+                if (spotEl) {
+                    spotEl.classList.add('saved-spot');
+                    spotEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+
+            function clearHighlights() {
+                document.querySelectorAll('.saved-spot').forEach(el => el.classList.remove('saved-spot'));
+            }
+
+            function updateSpotElement(spotId, isOccupied, spotType) {
+                const spotEl = document.getElementById(spotId);
+                if (!spotEl) return;
+
+                spotEl.classList.remove('available', 'occupied');
+                let iconHtml = '';
+                if (spotType === 'handicap') iconHtml = '<i class="fa-solid fa-wheelchair spot-icon"></i>';
+                if (spotType === 'ev') iconHtml = '<i class="fa-solid fa-charging-station spot-icon"></i>';
+
+                if (isOccupied) {
+                    spotEl.classList.add('occupied');
+                    if (spotType === 'regular') iconHtml = '<i class="fa-solid fa-car spot-icon"></i>';
+                } else {
+                    spotEl.classList.add('available');
+                }
+                spotEl.innerHTML = `<span class="spot-label">${spotId}</span>${iconHtml}`;
+            }
+
+            function updateCounter() {
+                levelLabel.textContent = `${T.status} (${T[`level${currentLevel}`]}):`;
+                counter.textContent = `${availableSpots} / ${totalSpots}`;
+            }
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const level = tab.dataset.level;
+                    if (level === currentLevel) return;
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    grid.style.display = 'none';
+                    loading.style.display = 'block';
+                    setTimeout(() => {
+                        initializeGrid(level);
+                    }, 500);
+                });
+            });
+
+            langToggleBtn.addEventListener('click', () => {
+                const newLang = currentLang === 'en' ? 'ar' : 'en';
+                updateUIforLanguage(newLang);
+                initializeGrid(currentLevel);
+            });
+
+            modalCloseBtn.addEventListener('click', () => {
+                modalOverlay.style.display = 'none';
+            });
+            modalOverlay.addEventListener('click', (e) => {
+                if (e.target === modalOverlay) {
+                    modalOverlay.style.display = 'none';
+                }
+            });
+
+            updateUIforLanguage('en');
+            initializeGrid('P1');
+        });
+    </script>
+</body>
+</html>
